@@ -1,0 +1,1485 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{Oswald}
+%\usepackage{libertine}
+
+%\usepackage{libertinust1math}
+%\usepackage[adobe-utopia]{mathdesign}
+
+\usepackage{array}
+
+\usepackage{enumitem}
+\setitemize{label=\usebeamerfont*{itemize item}%
+  \usebeamercolor[fg]{itemize item}
+  \usebeamertemplate{itemize item},
+}
+\setbeamertemplate{itemize item}[square]
+\setbeamertemplate{itemize subitem}[circle]
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.12}
+\usepackage{tikz, tikz-3dplot}
+ \usetikzlibrary{arrows,decorations.pathmorphing,through,backgrounds,positioning,fit,petri}
+ \usetikzlibrary{shapes,shadows}
+ \usetikzlibrary{shapes.multipart}
+ \usetikzlibrary{calc}
+ \usetikzlibrary{decorations.pathreplacing}
+ \usetikzlibrary{plotmarks}
+
+\usepgfplotslibrary{fillbetween}
+
+
+\tikzset{
+	invisible/.style={opacity=0},
+	visible on/.style={alt={#1{}{invisible}}},
+	alt/.code args={<#1>#2#3}{%
+		\alt<#1>{\pgfkeysalso{#2}}{\pgfkeysalso{#3}} % \pgfkeysalso doesn't change the path
+	},
+}
+
+%\pgfplotsset{every axis/.append style={label style={font=\small},tick label style={font=\footnotesize} }}
+
+\newcommand{\graphheight}{7cm}
+\newcommand{\graphwidth}{11cm}
+
+% \definecolor{azulcito}{RGB}{20,70,140}
+\definecolor{azulcito}{RGB}{0,80,150}
+\definecolor{verdecito}{RGB}{80,150,0}
+\definecolor{rojito}{RGB}{150,0,80}
+
+\setbeamercolor*{structure}{fg=azulcito,bg=azulcito!20!white}
+\setbeamercolor*{alerted text}{fg=azulcito}
+
+
+  \setbeamercolor{block title}{fg=azulcito,bg=azulcito!20!white}%�
+  \setbeamercolor{block body}{fg=black,bg=azulcito!10!white}
+  
+\beamertemplatenavigationsymbolsempty
+
+\setbeamercolor*{author in head/foot}{fg=azulcito,bg=azulcito!15!white}
+\setbeamercolor*{title in head/foot}{fg=azulcito,bg=azulcito!15!white}
+\setbeamercolor*{date in head/foot}{fg=azulcito,bg=azulcito!15!white}
+
+% Pgfplots
+\pgfplotsset{width=\graphwidth, height = \graphheight, grid style = {dashed, gray}, every tick label/.append style = {font=\footnotesize}, compat=1.18, legend style={font=\footnotesize}, every axis/.append style={label style={font=\footnotesize}}}
+
+\tikzset{>=stealth}
+
+\newtheorem{proposition}{Proposition}
+
+\defbeamertemplate*{footline}{mitema}
+{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.25ex,dp=1ex,left]{author in head/foot}%
+    \usebeamerfont{author in head/foot}\hspace*{2ex}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+    \usebeamerfont{date in head/foot}\insertshortdate{}
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+    \insertframenumber{}/\inserttotalframenumber\hspace*{2em} 
+  \end{beamercolorbox}}%
+ \vskip0pt%
+}
+
+
+\setbeamercolor{blocky}{fg=azulcito,bg=azulcito!15!white}
+\setbeamercolor{blocky2}{fg=black,bg=azulcito!10!white}
+
+\defbeamertemplate*{title page}{customized}[1][]
+{
+{\flushright
+  \begin{beamercolorbox}[wd=\paperwidth,ht=6em,dp=1ex,right,rightskip=1.5em]{blocky}%
+    \usebeamerfont{title}{\huge \inserttitle}\par \vspace{.9em}
+    \usebeamerfont{subtitle}{\Large \insertsubtitle}\par \vspace{.5em}
+  \end{beamercolorbox}%
+  \vfill
+    \usebeamerfont{author}{\Large \insertauthor}\par \vspace{1em}
+      \usebeamerfont{institute}{\large \insertinstitute}\par
+  
+  
+  \vfill
+  \usebeamerfont{date}{\insertdate}\par
+  %\usebeamercolor[fg]{titlegraphic}\inserttitlegraphic
+  }
+}
+
+\usefonttheme[onlymath]{serif}
+
+\title{Caching or pre-fetching? The role of hazard rates}
+
+\author[Andres Ferragut, Univ. ORT Uruguay]{Andres Ferragut\\[.6em] \normalsize joint work with Matias Carrasco and Fernando Paganini}
+\institute{Universidad ORT Uruguay}
+\date[SPOR Seminar]{SPOR Seminar -- Eindhoven University of Technology -- December 2023}
+
+%\setbeamertemplate{items}{\textbullet \hspace{.5em}}
+\AtBeginSection[]
+{
+\begin{frame}{Outline}
+\tableofcontents[currentsection, 
+   hideallsubsections, 
+   sectionstyle=show/shaded,
+]
+\end{frame}
+}
+
+
+\newenvironment*{myitem}[1][1.5em]{\begin{itemize}\setlength{\itemsep}{#1}}{\end{itemize}}
+\begin{document}
+
+\frame[plain]{\titlepage}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Problem formulation}
+
+\begin{frame}{The caching problem}
+	
+	\begin{columns}
+		\begin{column}{0.6\textwidth}
+			\begin{myitem}[2em]
+				\item Consider a \alert{cache system} with a catalog of $N$ objects.
+				\item Requests for objects arrive at random at rate $\lambda$.
+				\item The cache can locally store $C<N$ of them.
+				\item If item is in cache, we have a \alert{hit}.
+			\end{myitem}
+		\end{column}
+		\begin{column}{0.4\textwidth}
+			\centering
+			\input{figuras/cache_system.tikz}
+		\end{column}
+	\end{columns}
+
+	\vfill
+
+	\centering
+	\alert{Objective:} for a given arrival process, maximize the steady-state hit probability.
+\end{frame}
+
+% \begin{frame}{Populating a cache}{Two main approaches}
+	
+% \alert{Eviction-based policies:}\vfill
+% 	\begin{myitem}[1em]
+% 		\item Upon request arrival, check for presence, if new decide whether to store.
+% 		\item If cache is full, \alert{evict} a content based on some historical rule.
+% 	 \end{myitem}
+
+% 	 \vfill
+% \alert{Example: Least-Recently-Used}
+% \vfill
+% \begin{myitem}[1em]
+% 	\item Store the most recent $C$ requests.
+% 	\item If new request is present $\to$ serve and move to the front of the queue.
+% 	\item If not present $\to$ retrieve, store at the front and drop the oldest one.
+%  \end{myitem}
+% \vfill
+% \end{frame}
+
+\begin{frame}{Populating a cache: timer based policies}
+	
+\alert{Timer based (TTL) policies:}\vfill
+
+\begin{myitem}[1em]
+	\item Upon request arrival for item $i$, check for presence.
+	\item If new, store item and start a \alert{timer} $T_i$ to evict.
+	\item If present, reset timer to $T_i$.
+	\item Keep timers $T_i$ such that \alert{average} cache occupation is $C$.
+\end{myitem}
+
+\vspace{1.5em}
+
+\centering
+\input{figuras/ttl.tikz}
+\end{frame}
+
+% \begin{frame}{Eviction vs TTL}
+
+% 	\begin{myitem}
+% 		\item Eviction based policies work with a \alert{fixed} cache size.
+% 		\item Difficult to analyze: dynamics are coupled over requests.
+		
+% 		\item TTL policies have a \alert{soft} cache constraint.
+% 		\item But analysis \alert{decouple} over requests, thus simpler to get results.
+% 	\end{myitem}
+
+% 	\pause
+	
+% 	\vfill
+% 	\centering
+% 	\alert{What are the \textbf{optimal} policies in both families? Are they related?}
+% \end{frame}
+
+
+
+\begin{frame}{Request arrival model}
+	
+	The classical arrival model is the \alert{independent reference model}:
+
+	\vfill
+
+	\begin{myitem}
+		\item Requests arrive as a Poisson process of intensity $\lambda$.
+		\item Request is for item $i$ with probability $p_i$ (popularity).
+		\item Poisson thinning: each request process is Poisson $\lambda p_i$.
+		\item Succesive requests are \alert{independent} with distribution $(p_i: i=1,\ldots,N)$.
+	\end{myitem}
+\end{frame}
+
+\begin{frame}{Request arrival model}{Beyond the IRM...}
+
+	\begin{myitem}
+		\item \alert{Problem:} caches work best when requests are \alert{bursty}, i.e. successive requests are \alert{correlated}.
+		
+		\item However, under the IRM we have purely random requests.
+	\end{myitem}
+
+	\vfill
+
+	\alert{Point process approach [Fofack et al. 2014]:}
+
+	\vfill
+	\begin{myitem}
+		\item Assume requests for item $i$ come from a \alert{point process} of intensity $\lambda_i := \lambda p_i$.
+		
+		\item If inter-request times are \alert{heavy tailed}, this can model burstiness.
+	\end{myitem}
+\end{frame}
+
+\begin{frame}{Example: Pareto arrivals}
+
+	Consider two items, with equal popularity...
+
+	\vfill
+
+	\begin{myitem}[1em]
+		\item Poisson arrivals:
+		
+		\begin{tikzpicture}
+			\begin{axis}[
+				xlabel=$t$,
+				ymin = -.3,
+				ymax = .3,
+				xmin = 0,
+				xmax=20,
+				xlabel style = {at={(axis cs:20,0)},anchor=north west},
+				y axis line style={draw=none},
+				x axis line style={->, thick},
+				ticks=none,
+				axis x line*=middle,
+				height=4cm,
+				]
+			\addplot+[azulcito, mark options={fill=azulcito},mark=*,only marks] coordinates {
+				(1.168317969682793,0.1)
+				(4.224371806575089,0.1)
+				(5.099828260436964,0.1)
+				(6.9938720827411025,0.1)
+				(7.629926439960695,0.1)
+				(8.015139525296764,0.1)
+				(11.41978663218779,0.1)
+				(13.285132721106107,0.1)
+				(16.28953436494327,0.1)
+				(17.14081344555717,0.1)
+				(18.46073553951872,0.1)
+				(19.6728937320483,0.1)
+			};
+			\addplot+[rojito, mark options={fill=rojito},mark=*,only marks] coordinates {
+				(1.49783995292964,-.1)
+  				(3.184138404294451,-.1)
+  				(4.35051050123616,-.1)
+  				(5.1091887517481505,-.1)
+  				(6.221541171374557,-.1)
+  				(6.226859317209702,-.1)
+  				(8.586778366165495,-.1)
+				(13.057655264423126,-.1)
+ 				(13.594421727013588,-.1)
+ 				(15.096680803679005,-.1)
+				(17.731518813017008,-.1)
+ 				(18.40246895328477,-.1)				
+			};
+			\end{axis}
+			\node at (12,1.2) {Homogeneous};
+		\end{tikzpicture}
+
+		\item Heavy tailed arrivals (Pareto $\alpha=2$):
+		
+		\begin{tikzpicture}
+			\begin{axis}[
+				xlabel=$t$,
+				ymin = -.3,
+				ymax = .3,
+				xmin = 0,
+				xmax=20,
+				xlabel style = {at={(axis cs:20,0)},anchor=north west},
+				y axis line style={draw=none},
+				x axis line style={->, thick},
+				ticks=none,
+				axis x line*=middle,
+				height=4cm,
+				]
+			\addplot+[azulcito, mark options={fill=azulcito}, mark=*,only marks] coordinates {
+				(2.1995364349536235,.1)
+				(8.947058606859512,.1)
+  				(9.155089124125874,.1)
+ 				(10.084686662202682,.1)
+ 				(11.733424911823171,.1)
+ 				(14.830631279727431,.1)
+ 				(15.149252788554351,.1)
+ 				(15.791821681936792,.1)
+ 				(16.599742636184,.1)
+
+			};
+			\addplot+[rojito,mark options={fill=rojito},mark=*,only marks] coordinates {
+				(12.653556737204989,-.1)
+ 				(13.146127585840045,-.1)
+ 				(13.643536674608884,-.1)
+ 				(14.051631664505377,-.1)
+ 				(14.183143031766923,-.1)
+ 				(14.85305783374829,-.1)
+ 				(15.61726438611725,-.1)
+ 				(15.848820745581179,-.1)
+ 				(16.419089799482926,-.1)
+			};
+			\end{axis}
+			\node at (12,1.2) {Bursty!};
+		\end{tikzpicture}
+
+	\end{myitem}
+
+\end{frame}
+
+\begin{frame}{A bit of point process theory...}
+	
+	Let $N = \{\tau_k:k\in\mathbb{Z}\}$ be a \alert{stationary point process} representing requests from an item:
+
+	\begin{center}
+	\resizebox{0.9\textwidth}{!}{
+	\begin{tikzpicture}
+	   
+		\draw[->,thick] (0,0) -- (14,0);
+		\node[below right] at (14,0) {$t$};
+		
+		\draw[->,very thick, azulcito] (1,1) -- (1,0);
+		\draw[->,very thick, azulcito] (4,1) -- (4,0);
+		\draw[->,very thick, azulcito] (6,1) -- (6,0);
+		\draw[->,very thick, azulcito] (12,1) -- (12,0);
+		\draw[-,thick] (8,-.1) node[below] {$0$} -- (8,0.1);
+	
+		\node[below] at (1,0) {$\tau_{-2}$};
+		\node[below] at (4,0) {$\tau_{-1}$};
+		\node[below] at (6,0) {$\tau_{0}$};
+		\node[below] at (12,0) {$\tau_{1}$};
+		 
+		\draw[->, very thick, verdecito] (1,.4) -- node[midway, above, anchor=south] {$X\sim F$} (4,.4);
+
+		\draw[->, very thick, rojito] (8,.4) -- node[midway, above, anchor=south] {$\hat{X}\sim \hat{F}$} (6,.4);
+
+	\end{tikzpicture}
+	}
+	\end{center}
+
+\vfill
+
+		\begin{tabular}{m{6cm} m{6cm}}
+			\alert{Inter-arrival distribution:} & \alert{Age distribution:} \\
+					\begin{gather*}
+						F(t) := P^0_N (\tau_1 - \tau_0 \leqslant t) \\
+						E^0_N[\tau_1] = 1/\lambda.
+					\end{gather*} &
+					\begin{equation*}
+						\hat{F}(t) := P (- \tau_0 \leqslant t) = \lambda \int_0^t (1-F(s))ds,
+					\end{equation*}		
+		\end{tabular}
+			\vfill
+
+		Note: here $P^0_N$ is the \alert{Palm probability} of the point process (conditioning on $\tau_0=0$).
+
+\end{frame}
+
+\begin{frame}{Application: TTL policies}
+	
+	Consider a single item with a timer $T$ and its request process:
+
+	\bigskip
+
+	\begin{columns}[T]
+		\begin{column}{.5\textwidth}
+		\textbf{Hit probability:} \alert{next} arrival occurs before timer expires.
+
+		\bigskip
+		
+		\begin{center}
+
+		\begin{tikzpicture}[scale=1]
+		  \draw[->,thick] (0,0) -- (6,0);
+		  \node[below right] at (6,0) {\footnotesize $t$};
+		
+		  \draw[->,very thick, rojito] (1,1) -- (1,0);
+		  \draw [->,thick,azulcito] (1.2,1.2) to [out=20,in=160] (4.8,1.2) node [above right] {$T$};
+		  \draw [->,thick,black] (1.1,.2) -- (3.9,.2) node [above, midway] {$X \sim F(x)$};
+		  \draw[->,very thick, verdecito] (4,1) -- (4,0);
+		  \node[azulcito,below] at (3,-.5) {Hit probability $= F(T)$};
+		  \end{tikzpicture}
+		  \end{center}
+		
+		\end{column}
+		
+		\begin{column}{0.5\textwidth}
+
+		\textbf{Occupation probability:} probability that timer hasn't expired by $0$ since last arrival.
+
+		\begin{center}
+
+		 \bigskip
+
+		 \begin{tikzpicture}
+		 \draw[white,fill=azulcito!10!white] (1,0.9) rectangle (5,0); 
+		 \shade[right color=azulcito!10!white, left color=white] (1,.9) rectangle (0,0);
+		  \draw[->,thick] (0,0) -- (6,0);
+		  \node[below right] at (6,0) {\footnotesize $t$};
+		  
+		  \draw[thick] (3,.1) -- (3,-.1);
+		  \node[below right] at (3,0) {{\footnotesize $0$}};
+		
+		  \draw[->,very thick, verdecito] (1,1) -- (1,0);
+		  \draw [->,thick, azulcito] (1.2,1.2) to [out=20,in=160] (4.8,1.2) node [above right] {$T$};
+		 % \draw[->,very thick, rojito!20!white] (5.75,1) -- (5.75,0);
+		  \draw [<-,thick, black] (1.1,.2) -- (3,.2) node [above, midway] {$\hat{X}\sim\hat{F}(x)$};
+		  
+		  \node[azulcito,below] at (3,-.5) {Avg. occupation $= \hat{F}(T)$};
+		\end{tikzpicture}
+		\end{center}
+		
+		\end{column}
+		\end{columns}
+\end{frame}
+
+\section{Deriving the optimal timer policy}
+
+\begin{frame}{Choosing the optimal timers}
+
+	Requests come from independent sources with intensities $\lambda_i$ and inter-arrival distribution $F_i$:
+
+	\vfill
+
+	\begin{problem}[Optimal TTL policy]
+		Choose timers $T_i\geqslant 0$ such that:
+		\begin{equation*}
+			\max_{T_i\geqslant 0} \sum_i \lambda_i F_i(T_i)
+		\end{equation*}
+		subject to:
+		\begin{equation*}
+			\sum_i \hat{F}_i(T_i) \leqslant C
+		\end{equation*}
+	\end{problem}
+
+	\vfill
+	\alert{Remark:} non-convex non-linear program.
+\end{frame}
+
+\begin{frame}{Choosing the optimal timers}
+
+	\alert{Idea:} Change of variables $u_i = \hat{F}_i (T_i)$ (occupation).
+	\vfill
+
+	\begin{problem}[Optimal TTL policy]
+		Choose timers $T_i = \hat{F}_i^{-1}(u_i)$ such that:
+		\begin{equation*}
+			\max_{u_i\in[0,1]} \sum_i \lambda_i F_i(\hat{F}^{-1}_i(u_i))
+		\end{equation*}
+		subject to:
+		\begin{equation*}
+			\sum_i u_i \leqslant C
+		\end{equation*}
+	\end{problem}
+
+	\vfill
+\end{frame}
+
+\begin{frame}{The hazard rate function}
+
+	Define $G_i(u) := \lambda_i F_i(\hat{F}^{-1}_i(u))$, then:
+	\begin{equation*}
+		\frac{\partial G_i}{\partial u} = \lambda_i f_i(\hat{F}^{-1}_i(u)) \frac{\partial}{\partial u} \hat{F}^{-1}_i(u) = \frac{\lambda_i f_i(\hat{F}^{-1}_i(u))}{\lambda_i (1-F_i(\hat{F}^{-1}_i(u)))} = \eta_i(T_i)
+	\end{equation*}
+		where $\eta_i(t)$ is the \alert{hazard rate function} of the inter-arrival distribution:
+
+		\begin{equation*}
+			\eta_i(t) := \frac{f_i(t)}{1-F_i(t)}
+		\end{equation*}
+
+		\vfill
+	\alert{Idea:} the hazard rate measures the probability that we have a request at time $t$, given that the current interval is larger than $t$.
+\end{frame}
+
+\begin{frame}{Increasing hazard rates}
+	
+	\begin{description}\setlength{\itemsep}{1.5em}
+		\item[\alert{Poisson arrivals:}] constant hazard rate (memoryless property), $\eta_i(t) \equiv \lambda_i$ $\to$ objective is \textbf{linear}. 
+		\item[\alert{Increasing hazard rates:}] $\eta_i(t)$ increasing (more regular traffic) $\to$ objective is \textbf{convex}!
+	\end{description}
+
+	\vfill
+
+	\begin{block}{Optimal TTL policy, constant or IHR, [F',Rodriguez, Paganini 18].}
+	In both cases, the optimal TTL policy is \alert{static}:
+	\begin{equation*}
+		T_i^* = \infty, \quad (u_i^*=1) \quad \text{for the $C$ contents with higher } \lambda_i
+	\end{equation*}
+	\end{block}
+\end{frame}
+
+\begin{frame}{Decreasing hazard rates}
+
+	\begin{myitem}[2em]
+	\item The \alert{decreasing hazard rate} case corresponds to heavy tails and thus more bursty traffic $\to$ where caching is more useful!
+
+	\item If $\eta_i(t)$ is \alert{decreasing}, objective is \alert{concave}, we have a non-trivial optimum:
+
+	\begin{equation*}
+		\mathcal{L}(u,\mu) = \sum_i \lambda_i F_i(\hat{F}^{-1}(u_i)) - \mu\left(\sum_i u_i - C\right)
+	\end{equation*}
+
+	\item KKT conditions:
+	\begin{equation*}
+		\eta_i(\hat{F}^{-1}(u_i^*)) = \eta_i(T_i^*) \geqslant \mu \quad \forall i, \quad \mu\left(\sum_i u_i^* -C\right) = 0
+	\end{equation*}
+	\end{myitem}
+\end{frame}
+
+\begin{frame}{Decreasing hazard rates}
+
+\begin{block}{Optimal TTL policy, DHR, [F',Rodriguez, Paganini 18].}
+	The optimal TTL caching policy for DHR is such that:
+   \begin{equation*}
+	\eta_i (T_i^*) \geqslant \mu^*
+   \end{equation*}
+  for every stored content.
+   \end{block}
+  \vfill
+
+  \alert{Idea:} we have a fixed memory budget to allocate. $\eta_i(T_i)$ is the marginal increase in hit rate (utility) for enlarging the timer $T_i$.
+
+  \vfill
+
+  \alert{Optimal allocation:} equalize marginal utilities.
+\end{frame}
+
+\begin{frame}{Parametric heavy tailed case}
+
+	\begin{columns}[T]
+		\begin{column}{0.6\textwidth}
+
+			\begin{myitem}
+				\item For \alert{Pareto} arrivals and \alert{Zipf} popularities you can obtain a nice \alert{fluid limit}.
+				\item Let $N$ go to $\infty$ and $C=cN$, then $u_i^*$ has a functional limit.
+				\item The hit probability is given by [FRP '18]:		
+				\begin{equation*}
+					H^* = (1-\beta) \int_0^1 x^{-\beta}\left[1 - (1-u^*(x))^{\frac{\alpha}{\alpha-1}}\right]dx,
+				\end{equation*}
+			\end{myitem}
+			
+		\end{column}
+		\begin{column}{0.4\textwidth}
+
+			\begin{tikzpicture}
+				\begin{axis}[xlabel=$t$,
+					axis lines=left,
+					ymin = 0,
+					ymax = 1.3,
+					xmin = 0,
+					xmax = 5,
+					xlabel style = {at={(axis cs:5,0)},anchor=west},
+					axis line style={->, thick},
+					width=6cm,
+					height=3.2cm,
+					ticks=none,
+					ylabel=CDF,
+					]
+					\addplot [azulcito, thick, domain=0:5] {1-(1/(1+x))};
+					\addplot [dashed, domain=0:5] {1};
+					\node at (axis cs:3,0.3) {\footnotesize $F(t)=1-\left(\frac{\theta_i}{\theta_i+t}\right)^\alpha$};
+				\end{axis}
+			\end{tikzpicture}
+
+			\begin{tikzpicture}
+				\begin{axis}[xlabel=$t$,
+					axis lines=left,
+					ymin = 0,
+					ymax = 2.5,
+					xmin = 0,
+					xmax = 5,
+					xlabel style = {at={(axis cs:5,0)},anchor=west},
+					axis line style={->, thick},
+					width=6cm,
+					height=3.2cm,
+					ticks=none,
+					ylabel=Haz. rate,
+					]
+					\addplot [azulcito, thick, domain=0:5] {2/(1+x)};
+					\node at (axis cs:4,1) {\footnotesize $\eta(t) =\frac{\alpha}{\theta_i+t}$};
+				\end{axis}
+			\end{tikzpicture}
+	
+			\begin{tikzpicture}
+				\begin{axis}[xlabel=$i$,
+					axis lines=left,
+					ymin = 0,
+					ymax = 1.2,
+					xmin = 0,
+					xmax = 20,
+					xlabel style = {at={(axis cs:20,0)},anchor=west},
+					axis line style={->, thick},
+					width=6cm,
+					height=3.2cm,
+					ticks=none,
+					ylabel=Popularity,
+					]
+					\addplot [azulcito, thick,only marks, domain=1:18] {1/x^0.8};
+					\node at (axis cs: 10,.5) {\footnotesize $p_i \propto i^{-\beta}$, $\beta<1$};
+				\end{axis}
+			\end{tikzpicture}
+	
+		\end{column}
+	\end{columns}		
+
+\end{frame}
+
+% \begin{frame}{Fluid limit}
+
+% 	In the parametric case we have the following \alert{fluid limit}:
+
+% 	\begin{itemize}
+% 		\item Take $C_N=cN$, and let the number of files $N\to \infty$.
+% 		\item Consider the \alert{relative rank}: $x=n/N \in (0,1]$.
+% 	   \end{itemize}
+	  
+% 	   \vfill
+	   
+% 	   \begin{theorem}[FRP 18]
+% 		Let $u^{*,N}(x) = u^{*,N}_{\lfloor xN\rfloor}$, $x\in(0,1]$ then:
+% 		\begin{equation*}
+% 		u^{*,N} (x) \longrightarrow_{N\to\infty} u^*(x) = \left[1-\kappa x^{\beta(\alpha-1)}\right]^+
+% 		\end{equation*}
+% 	  where $\kappa$ is such that:
+% 	  \begin{equation*}
+% 	   \int_0^1 u^*(x) dx = c.
+% 	  \end{equation*}
+% 	\end{theorem}
+
+% \end{frame}
+
+% \begin{frame}{Asymptotic hit probability}
+
+% 	Using the fluid limit, we can compute the asymptotic hit rate as the catalog grows.
+  
+%  \vfill
+ 
+%  \begin{block}{Corollary}
+%   For $\beta<1$ the asymptotic hit probability as $N\to\infty$ is given by:
+  
+%   \begin{equation*}
+%     H^* = (1-\beta) \int_0^1 x^{-\beta}\left[1 - (1-u^*(x))^{\frac{\alpha}{\alpha-1}}\right]dx,
+%   \end{equation*}
+%  \end{block}
+
+%  \vfill
+
+%  \pause
+
+%  \alert{Remarks:}
+%  \begin{myitem}
+% 	\item The \alert{hazard rate} plays a crucial role in determining the optimal TTL policy.
+% 	\item For DHR, we have explicit expressions for asymptotic hit rate.
+%  \end{myitem}
+% \end{frame}
+
+
+
+\begin{frame}{Conclusions so far...}
+	
+	\begin{myitem}[2em]
+		\item The \alert{hazard rate function} of $F$ plays a crucial role in determining the optimal TTL policy!
+		\item For IHR: just store the most popular content.
+		\item For DHR: proper optimization problem, \alert{equalize hazard rates}.
+		\item Asymptotic analysis has \alert{explicit expressions}.
+	\end{myitem}
+\end{frame}
+
+
+\section{Optimal causal policy}
+
+\begin{frame}{Replacement policies}
+	
+	\begin{myitem}
+		\item Assume now that you have a \alert{fixed} capacity $C$. We have to decide which contents to store.
+		\item Naïve idea: just keep the $C$ most popular ones (higher $\lambda_i$). Can we do better?
+		\item Another idea: Least-recently-used (discard from the cache the oldest request).
+	\end{myitem}
+
+	\vfill
+
+	\pause
+	\begin{problem}
+		Given some independent stationary request processes with intensities $\lambda_i$, what is the \alert{optimal causal policy}?
+	\end{problem}
+
+	\vfill
+
+	\alert{Idea:} we should keep track of some \alert{local notion} of intensity!
+\end{frame}
+
+\begin{frame}{Stochastic intensity}
+	Consider a simple stationary point process $N$ with intensity $\lambda$, defined in some probability space $(\Omega, \mathcal{F},P)$. Let some filtration $\{\mathcal{F}_t\}_{t\in\mathbb{R}}$ be a \alert{history} of the process.
+
+	\bigskip
+
+	Define the \alert{stochastic intensity} $\lambda(t)$ of $N$ as:
+
+	\begin{equation*}
+		\lim_{h\to 0} \frac{1}{h}E[N((t,t+h])\mid \mathcal{F}_t] = \lambda(t) \quad P-a.s.,
+	\end{equation*}
+
+	\bigskip
+	\alert{Idea:} If the process is simple (isolated points), $E[N((t,t+h]) = \lambda h + o(h)$, so the \alert{average} stochastic intensity is $\lambda$. But given the history, the value of $\lambda(t)$ may change.
+
+
+\end{frame}
+
+% \begin{frame}{Stochastic intensity}{Martingale definition}
+
+% 	A more rigorous (but less constructive) definition is the following:
+
+% 	\begin{block}{Definition: stochastic intensity}
+
+% 		For a simple point process $N$ with intensity $\lambda$, the random process $\lambda(t)$ is a \alert{stochastic intensity} for the history $\mathcal{F}_t$ if:
+% 		\begin{equation*}
+% 			M(t) = N((0,t]) - \int_0^t \lambda(s)ds
+% 		\end{equation*} 
+% 		is a local $(P,\mathcal{F}_t)$ martingale.
+% 	\end{block}
+
+% 	\vfill
+
+% 	\alert{Example:} If $N$ is Poisson, $M(t) = N((0,t]) - \lambda t$ is a martingale, thus $\lambda(t) \equiv \lambda$.
+% \end{frame}
+
+\begin{frame}{Stochastic intensity}{A local notion of intensity...}
+	
+	If traffic is \alert{bursty}, the stochastic intensity rises near arrivals:
+
+	\vfill
+
+	\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[xlabel=$t$,
+			ymin = -.3,
+			ymax = 2,
+			xmin = -.3,
+			xmax=20,
+			xlabel style = {at={(axis cs:20,0)},anchor=north west},
+			y axis line style={draw=none},
+			x axis line style={->, thick},
+			ticks=none,
+			axis x line*=middle,
+			width=0.8\textwidth,
+			height= 0.3\textwidth,
+			]
+			\addplot[verdecito,domain=0:20, dashed] {1};
+			\addplot[rojito,domain=0:1.2] {2/(1+x)};
+			\addplot[rojito,domain=1.2:2] {2/(1+x-1.2)};
+			\addplot[rojito,domain=2:2.5] {2/(1+x-2)};
+			\addplot[rojito,domain=2.5:3.5] {2/(1+x-2.5)};
+			\addplot[rojito,domain=3.5:8] {2/(1+x-3.5)};
+			\addplot[rojito,domain=8:12] {2/(1+x-8)};
+			\addplot[rojito,domain=12:13] {2/(1+x-12)};
+			\addplot[rojito,domain=13:14.5] {2/(1+x-13)};
+			\addplot[rojito,domain=14.5:15.3] {2/(1+x-14.5)};
+			\addplot[rojito,domain=15.3:19] {2/(1+x-15.3)};
+			\node[below right, rojito] at (axis cs:15.3,2) {$\lambda(t)$};
+			\node[above left, verdecito] at (axis cs:20,1) {$\lambda$};
+
+			\addplot+[azulcito, mark options={fill=azulcito, scale=1.5}, mark=*,only marks] coordinates {
+				(0,0)
+				(1.2,0)
+ 				(2,0)
+ 				(2.5,0)
+ 				(3.5,0)
+ 				(8,0)
+ 				(12,0)
+ 				(13,0)
+ 				(14.5,0)
+ 				(15.3,0)
+			};
+		\end{axis}
+	\end{tikzpicture}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Stochastic intensity of a renewal process}
+
+	\begin{myitem}
+	\item Let now $N$ be a \alert{renewal process} $\to$ inter-request times are $iid\sim F$.
+	\item Let $\mathcal{F}_t$ be the \alert{natural history} of the process (i.e. the information of points up to $t$).	
+	\end{myitem}
+	\vfill
+	\begin{theorem}[cf. Brémaud 21]
+		Let $\eta(t) := f(t)/(1-F(t))$ be the \alert{hazard rate} function of $F$. Define:
+		\begin{equation*}
+			\lambda(t) = \eta(t-\tau^*_t),
+		\end{equation*}
+		where $\tau^*_t$ is the last point before $t$. Then $\lambda(t)$ is a stochastic intensity for $(N,\mathcal{F}_t)$.
+	\end{theorem}
+
+\end{frame}
+
+\begin{frame}{Some examples...}
+
+	\begin{tabular}{m{7.5cm} m{6cm}}
+
+		\begin{tikzpicture}
+			\begin{axis}[xlabel=$t$,
+				ymin = -.3,
+				ymax = 2,
+				xmin = -.3,
+				xmax=20,
+				xlabel style = {at={(axis cs:20,0)},anchor=north west},
+				y axis line style={draw=none},
+				x axis line style={->, thick},
+				ticks=none,
+				axis x line*=middle,
+				width=8cm,
+				height= 3cm,
+				]
+				\addplot[rojito, domain=0:20] {1};
+				\node[above left, rojito] at (axis cs:20,1) {$\lambda(t)\equiv \lambda$};
+	
+				\addplot+[azulcito, mark options={fill=azulcito, scale=1.5}, mark=*,only marks] coordinates {
+					(0.9028581008067987,0)
+					(2.7341797790213573,0)
+					(4.228330726726128,0)
+					(5.577074925845067,0)
+					(6.211423990911654,0)
+					(8.528255357570485,0)
+					(12.753859672976413,0)
+					(14.826517141978712,0)
+					(15.028110470502309,0)
+					(15.868264106338712,0)
+					(17.418133532477547,0)
+					(18.306210880027027,0)
+				};
+			\end{axis}
+		\end{tikzpicture} & \alert{Constant hazard rate} $\to$ Poisson process.\\
+		\\
+		\begin{tikzpicture}
+			\begin{axis}[xlabel=$t$,
+				ymin = -.3,
+				ymax = 2,
+				xmin = -.3,
+				xmax=20,
+				xlabel style = {at={(axis cs:20,0)},anchor=north west},
+				y axis line style={draw=none},
+				x axis line style={->, thick},
+				ticks=none,
+				axis x line*=middle,
+				width=8cm,
+				height=3cm,
+				]
+				\addplot[verdecito,domain=0:19, dashed] {1};
+				\addplot[rojito,domain=0:2] {0.5+0.5*x};
+				\addplot[rojito,domain=2:4] {0.5+0.5*(x-2};
+				\addplot[rojito,domain=4:5.33] {0.5+0.5*(x-4};
+				\addplot[rojito,domain=5.33:7.13] {0.5+0.5*(x-5.33};
+				\addplot[rojito,domain=7.13:9.05] {0.5+0.5*(x-7.13};
+				\addplot[rojito,domain=9.05:11.55] {0.5+0.5*(x-9.05};
+				\addplot[rojito,domain=11.55:14.45] {0.5+0.5*(x-11.55};
+				\addplot[rojito,domain=14.45:17.55] {0.5+0.5*(x-14.45};
+				\addplot[rojito,domain=17.55:19] {0.5+0.5*(x-17.55};
+				\node[below, rojito] at (axis cs:15.3,2) {$\lambda(t)$};
+				\node[right, verdecito] at (axis cs:18.8,1) {$\lambda$};
+
+				\addplot+[azulcito, mark options={fill=azulcito, scale=1.5}, mark=*,only marks] coordinates {
+					(2,0)
+					(4,0)
+					(5.33,0)
+					(7.13,0)
+					(9.05,0)
+					(11.55,0)
+					(14.45,0)
+					(17.55,0)
+				};
+			\end{axis}
+		\end{tikzpicture} & \alert{Increasing} hazard rate $\to$ more periodic!\\
+		\\
+		\begin{tikzpicture}
+			\begin{axis}[xlabel=$t$,
+				ymin = -.3,
+				ymax = 2,
+				xmin = -.3,
+				xmax=20,
+				xlabel style = {at={(axis cs:20,0)},anchor=north west},
+				y axis line style={draw=none},
+				x axis line style={->, thick},
+				ticks=none,
+				axis x line*=middle,
+				width=8cm,
+				height=3cm,
+				]
+				\addplot[verdecito,domain=0:19, dashed] {1};
+				\addplot[rojito,domain=0:1.2] {2/(1+x)};
+				\addplot[rojito,domain=1.2:2] {2/(1+x-1.2)};
+				\addplot[rojito,domain=2:2.5] {2/(1+x-2)};
+				\addplot[rojito,domain=2.5:3.5] {2/(1+x-2.5)};
+				\addplot[rojito,domain=3.5:10] {2/(1+x-3.5)};
+				\addplot[rojito,domain=10:12] {2/(1+x-10)};
+				\addplot[rojito,domain=12:13] {2/(1+x-12)};
+				\addplot[rojito,domain=13:14.5] {2/(1+x-13)};
+				\addplot[rojito,domain=14.5:15.3] {2/(1+x-14.5)};
+				\addplot[rojito,domain=15.3:19] {2/(1+x-15.3)};
+				\node[below right, rojito] at (axis cs:15.5,2) {$\lambda(t)$};
+				\node[right, verdecito] at (axis cs:18.8,1) {$\lambda$};
+	
+				\addplot+[azulcito, mark options={fill=azulcito, scale=1.5}, mark=*,only marks] coordinates {
+					(0,0)
+					(1.2,0)
+					 (2,0)
+					 (2.5,0)
+					 (3.5,0)
+					 (10,0)
+					 (12,0)
+					 (13,0)
+					 (14.5,0)
+					 (15.3,0)
+				};
+			\end{axis}
+		\end{tikzpicture} & \alert{Decreasing} hazard rate $\to$ more bursty!
+
+
+	\end{tabular}
+\end{frame}
+
+\begin{frame}{Causal caching policies}
+	
+	\begin{myitem}[1em]
+		\item Consider a cache system fed by $N$ independent renewal processes.
+		\item Let $\mathcal{F}_t = \sigma(\{\mathcal{F}_t^i: i=1,\ldots,N\})$ their aggregate history.
+	\end{myitem}
+
+	\vfill
+
+	\begin{block}{Definition}
+		A \alert{causal} caching policy is an $\mathcal{F}_t$ \alert{predictable} stochastic process
+		\begin{equation*}
+			\mathcal{C}:\Omega\times\mathbb{R} \to 2^{\{1,\ldots,N\}} 
+		\end{equation*}
+		i.e. $\mathcal{C}(t) = \{i_1,\ldots,i_C\}$ is the subset cached at time $t$, and only depends on the past history of item requests.
+	\end{block}
+
+\end{frame}
+
+\begin{frame}{The hit process}{Stochastic intensity}
+	
+	Focus now on a particular content $i$, its \alert{hit process} is the point process given by:
+
+	\vfill
+
+	\begin{columns}
+		\begin{column}{0.5\textwidth}
+			\begin{equation*}
+				H_i(B) = \sum_{n\in\mathbb{Z}} \mathbf{1}_{\{\tau_n^i\in B\}}\mathbf{1}_{\{i\in \mathcal{C}(\tau_n^i)\}}
+			\end{equation*}
+		\end{column}
+		\begin{column}{0.5\textwidth}
+			\begin{tikzpicture}
+				\begin{axis}[xlabel=$t$,
+					ymin = -.3,
+					ymax = .3,
+					xmin = -.3,
+					xmax=20,
+					xlabel style = {at={(axis cs:20,0)},anchor=north west},
+					y axis line style={draw=none},
+					x axis line style={->, thick},
+					ticks=none,
+					axis x line*=middle,
+					width=6cm,
+					height=3cm,
+					]
+					\addplot+[rojito, mark options={fill=rojito, scale=1.5}, mark=x,only marks] coordinates {
+						(0,0)
+						 (10,0)
+					};
+					\addplot+[verdecito, mark options={fill=verdecito, scale=1.5}, mark=*,only marks] coordinates {
+						(1.2,0)
+						 (2,0)
+						 (2.5,0)
+						 (3.5,0)
+						 (12,0)
+						 (13,0)
+						 (14.5,0)
+						 (15.3,0)
+					};
+				\end{axis}
+			\end{tikzpicture}
+
+		\end{column}
+	\end{columns}
+
+	\vfill
+
+	Since $\mathbf{1}_{\{i\in \mathcal{C}(\tau_n^i)\}}$ is $\mathcal{F}_t$ predictable, its stochastic intensity is:
+
+	\begin{equation*}
+		h_i(t) = \lambda_i(t) \mathbf{1}_{\{i\in \mathcal{C}(t)\}}
+	\end{equation*}
+	
+	i.e., $h_i(t)=\lambda_i(t)$ while $i\in \mathcal{C}(t)$ and otherwise $0$.
+\end{frame}
+
+\begin{frame}{The hit process}{The hit rate}
+	If we now consider the aggregate of requests, the \alert{total hit process} is given by:
+	\begin{equation*}
+		H = \sum_{i=1}^N H_i
+	\end{equation*}
+
+	And its stochastic intensity is just:
+	\begin{equation*}
+		h(t) = \sum_{i=1}^N h_i(t) = \sum_{i=1}^N \lambda_i(t) \mathbf{1}_{\{i\in \mathcal{C}(t)\}}
+	\end{equation*}
+
+	The hit rate and hit probabilities of the policies are given by:
+	\begin{equation*}
+		\text{hit rate} = \lambda_H := E[h(t)], \quad \text{hit probability} := \frac{\lambda_H}{\lambda}.
+	\end{equation*}
+	
+\end{frame}
+
+\begin{frame}{Maximizing the hit rate}
+	
+	In order to maximize $\lambda_H$, consider the policy:
+	\begin{equation*}
+		\mathcal{C}^*(t) = \{i_1,\ldots,i_C\} \quad \text{such that}\; \sum_{i\in\{i_1,\ldots,i_C\}} \lambda_{i}(t) \text{ is maximized.}
+	\end{equation*}
+
+	Then, for any non-anticipative policy and for each realization:
+	\begin{equation*}
+		h(t) = \sum_{i\in\mathcal{C}(t)} \lambda_i(t) \leqslant \sum_{i\in \mathcal{C}^*(t)} \lambda_i(t) = h^*(t).
+	\end{equation*} 
+
+	\begin{theorem}[Towsley et al. '22]
+		The \alert{optimal causal policy} is to keep in the cache the $C$ objects with the \alert{highest stochastic intensity} at any time.
+	\end{theorem}
+
+\end{frame}
+
+\section{Asymptotic equivalence and optimality}
+
+\begin{frame}{The threshold process}
+	
+	We can rewrite this optimal policy as a \alert{threshold} policy:
+
+	\begin{equation*}
+		i\in\mathcal{C}^*(t) \Leftrightarrow \lambda_i(t) \geqslant \theta(t) := \text{ the $C$ largest stochastic intensity}
+	\end{equation*}
+
+	\vfill
+	\alert{Example:} Pareto requests, Zipf popularities, $N=20, C=4$.
+	\begin{center}
+		\input{figuras/threshold_process.tikz}
+	\end{center}
+
+	\vfill
+
+	We want to understand $\theta(t)$.
+\end{frame}
+
+% \begin{frame}{A useful lemma}
+	
+% 	\begin{columns}
+% 		\begin{column}{0.5\textwidth}
+% 			What's the stochastic intensity \alert{distribution} in steady state?			
+% 		\end{column}
+% 		\begin{column}{0.5\textwidth}
+% 			\begin{tikzpicture}
+% 				\begin{axis}[xlabel=$t$,
+% 					ymin = -2,
+% 					ymax = 3,
+% 					xmin = -.3,
+% 					xmax = 4.5,
+% 					xlabel style = {at={(axis cs:4.5,0)},anchor=north west},
+% 					y axis line style={draw=none},
+% 					x axis line style={->, thick},
+% 					ytick=\empty,
+% 					axis x line*=middle,
+% 					axis y line*=left,
+% 					width=7.5cm,
+% 					height=5cm,
+% 					xtick={0,4},
+% 					ytick={.8},
+% 					xticklabels={$\tau_0$,$\tau_1$},
+% 					yticklabels={$x$},
+% 					]
+% 					\addplot[domain=0:4,thick,azulcito] {2/(1+x)} node[midway, yshift=10, xshift=3,anchor=south east]{$\eta(t-\tau_0)$};
+% 					\addplot[domain=0:4,dashed] {0.8};
+% 					\fill[color=azulcito, opacity=0.1] (1.5,0) rectangle (4,0.8);
+% 					\draw [verdecito,decoration={brace,mirror,raise=0.5cm},decorate] (axis cs:0,0) -- (axis cs:4,0) node [pos=0.5,anchor=north,yshift=-0.55cm] {Cycle $\approx 1/\lambda$}; 
+% 					\draw [rojito,decoration={brace,raise=0.05cm},decorate] (axis cs:1.5,.8) -- (axis cs:4,0.8) node [pos=0.5,anchor=south,yshift=0.1cm] {$\mathbf{1}_{\{\eta(s)<x\}}$};
+% 				\end{axis}
+% 			\end{tikzpicture}
+% 		\end{column}
+% 	\end{columns}
+% 	\vfill
+% 	\begin{lemma}
+% 		If requests come from a Pareto($\alpha$) renewal process, with intensity $\lambda$, from the master equation:
+% 		\begin{equation*}
+% 			P(\lambda(0)\leqslant x) = \lambda E^0_{N}\left[\int_0^{\tau_1}\mathbf{1}_{\{\eta(s)\leqslant x\}}ds\right] = \left(\frac{\theta x}{\alpha}\right)^{\alpha-1}, \quad 0\leqslant x \leqslant \alpha/\theta,
+% 		\end{equation*}
+% 		with $\theta = (\alpha-1)/\lambda$.
+% 	\end{lemma}
+% \end{frame}
+
+	
+
+% \begin{frame}{The threshold value in steady state}
+	
+% 	\begin{myitem}[1em]
+% 		\item Now we have $N$ independent renewal processes with $\lambda_i(t)$.
+% 		\item At time $0$, we have a sample:
+% 		\begin{equation*}
+% 			\{\lambda_1(0), \lambda_2(0),\ldots, \lambda_N(0)\}
+% 		\end{equation*}
+% 		of independent, but \textbf{not identically distributed} random variables, with known distribution.
+
+% 		\item The threshold $\theta(0)$ is the $C-$th \alert{order statistic} (in decreasing order) of the sample.
+% 	\end{myitem}
+% 	\vfill
+% 	\alert{Problem:} for non $iid$ random variables, no closed form $\to$ Can we say something about the large scale limit?
+% \end{frame}
+
+\begin{frame}{Asymptotic equivalence result}
+
+	\begin{block}{Theorem [F', Carrasco, Paganini, three weeks ago...]}
+		Consider a cache system fed by $N$ independent renewal processes with DHR inter-arrival times, and the optimal non-anticipative policy. Let $N\to \infty$ with $C=cN$. Then, in steady state:
+
+		\bigskip
+		\begin{myitem}
+			\item The (appropriately scaled) threshold $\theta_N(t)$ converges almost surely to a constant $\theta^*$.
+			\item $\theta^*$ is the dual value of the optimal TTL policy, i.e. the value that equalizes hazard rates.
+			\item If popularities are slowly decaying (i.e. $\beta<1$) then the hit probability of the optimal policy converges to $H^*$, the hit probability of the optimal TTL policy.
+		\end{myitem}
+	\end{block}
+	
+\end{frame}
+
+\begin{frame}{Simulation example}
+	\begin{center}
+		\includegraphics[width=0.65\textwidth]{figuras/simulation_example.pdf}
+
+		{\footnotesize $N=1000, C=100$. Pareto $\alpha=2$ requests, Zipf $\beta=0.5$  popularities.}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Why this happens?}
+	
+	\pause
+	Because, for decreasing hazard rates, the TTL policy \alert{is also a threshold policy!}
+
+	\vfill
+
+	\begin{center}
+	\begin{tikzpicture}[scale=1.2]
+		\begin{axis}[xlabel=$t$,
+			ymin = -2,
+			ymax = 3,
+			xmin = -.3,
+			xmax = 3.5,
+			xlabel style = {at={(axis cs:3.5,0)},anchor=north west},
+			y axis line style={draw=none},
+			x axis line style={->, thick},
+			ytick=\empty,
+			axis x line*=middle,
+			axis y line*=left,
+			width=7.5cm,
+			height=5cm,
+			xtick={0,4},
+			ytick={.8},
+			xticklabels={$\tau_0$,$\tau_1$},
+			yticklabels={$\theta$},
+			]
+			\addplot[domain=0:4,thick,azulcito] {2/(1+x)} node[midway, yshift=10, xshift=3,anchor=south east]{$\eta(t-\tau_0)$};
+			\addplot[domain=0:4,dashed] {0.8};
+			\fill[color=azulcito, opacity=0.1] (0,0) rectangle (1.5,2);
+			\draw [rojito,decoration={mirror,brace,raise=0.05cm},decorate] (axis cs:0,0) -- (axis cs:1.5,0) node [pos=0.5,anchor=north,yshift=-0.1cm] {$\mathbf{1}_{\{\eta(s)>\theta\}}$};
+			\node[below right] at (1.5,0) {\footnotesize $T$};
+			\draw[stealth-, thick] (1.5,0) -- (1.5,0.8) -- (0,0.8);
+		\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	\vfill
+	\pause
+	\alert{Key idea:} replace the timer $T_i$ by $\theta_i = \eta_i^{-1}(T_i)$, the corresponding hazard rate at the timer. 
+\end{frame}
+
+% \begin{frame}{Some key steps in the proof}
+
+% 	\begin{myitem}
+% 		\item Identify the distribution of $\lambda_i(t)$, the $i-$th stochastic intensity, with $\hat{F}_i(\eta_i^{-1}(\theta_i))$.
+% 		\item Rewrite the optimal timer policy problem using the variables $\theta_i=\eta_i^{-1}(T_i)$.
+% 		\item Use a statistics functional law of large numbers to prove that the sample empirical distribution of the sample $(\lambda_1(0),\ldots,\lambda_N(0))$ converges to the average of the $\hat{F}_i\circ \eta_i^{-1}$.
+% 		\item Identify the threshold in the average as the solution of the TTL optimization problem. 
+% 	\end{myitem}
+
+% \end{frame}
+
+\section{Timer based pre-fetching}
+
+\begin{frame}{Back to increasing hazard rates...}
+
+	\begin{myitem}[2em]
+	\item Recall the increasing hazard rate behavior:
+	
+	\bigskip
+
+	\begin{center}
+	\begin{tikzpicture}
+		\begin{axis}[xlabel=$t$,
+			ymin = -.3,
+			ymax = 2,
+			xmin = -.3,
+			xmax=20,
+			xlabel style = {at={(axis cs:20,0)},anchor=north west},
+			y axis line style={draw=none},
+			x axis line style={->, thick},
+			ticks=none,
+			axis x line*=middle,
+			width=8cm,
+			height=3cm,
+			]
+			\addplot[verdecito,domain=0:19, dashed] {1};
+			\addplot[rojito,domain=0:2] {0.5+0.5*x};
+			\addplot[rojito,domain=2:4] {0.5+0.5*(x-2};
+			\addplot[rojito,domain=4:5.33] {0.5+0.5*(x-4};
+			\addplot[rojito,domain=5.33:7.13] {0.5+0.5*(x-5.33};
+			\addplot[rojito,domain=7.13:9.05] {0.5+0.5*(x-7.13};
+			\addplot[rojito,domain=9.05:11.55] {0.5+0.5*(x-9.05};
+			\addplot[rojito,domain=11.55:14.45] {0.5+0.5*(x-11.55};
+			\addplot[rojito,domain=14.45:17.55] {0.5+0.5*(x-14.45};
+			\addplot[rojito,domain=17.55:19] {0.5+0.5*(x-17.55};
+			\node[below, rojito] at (axis cs:15.3,2) {$\lambda(t)$};
+			\node[right, verdecito] at (axis cs:18.8,1) {$\lambda$};
+
+			\addplot+[azulcito, mark options={fill=azulcito, scale=1.5}, mark=*,only marks] coordinates {
+				(2,0)
+				(4,0)
+				(5.33,0)
+				(7.13,0)
+				(9.05,0)
+				(11.55,0)
+				(14.45,0)
+				(17.55,0)
+			};
+		\end{axis}
+	\end{tikzpicture}
+	\end{center}
+	\item Once you have seen a request, it's less likely to see another one for a while.
+	\end{myitem}
+
+	\pause
+	\vfill
+
+	\begin{center}
+		\alert{What is the timer based equivalent of this case?}
+	\end{center}
+
+\end{frame}
+
+\begin{frame}{Timer based pre-fetching policies}
+
+
+\begin{block}{Key insight}
+The question now is not \alert{how long we should remember something}, but instead \alert{how long we should forget about it}!
+\end{block}
+
+\vfill
+
+\pause
+
+\alert{Timer based pre-fetching policy:}
+
+\vfill
+
+\input{figuras/ttl_pre.tikz}
+
+\end{frame}
+
+\begin{frame}{Timer based pre-fetching}
+	
+	Consider a single item with a timer $T$ and its request process:
+
+	\bigskip
+
+	\begin{columns}[T]
+		\begin{column}{.5\textwidth}
+		\textbf{Hit probability:} \alert{next} arrival occurs \alert{after} timer expires.
+
+		\bigskip
+		
+		\begin{center}
+
+		\begin{tikzpicture}[scale=1]
+			\draw[white,fill=azulcito!10!white] (3.5,.9) rectangle (4,0);
+		  \draw[->,thick] (0,0) -- (6,0);
+		  \node[below right] at (6,0) {\footnotesize $t$};
+		
+		  \draw[->,very thick, rojito] (1,1) -- (1,0);
+		  \draw [->,thick,azulcito] (1.1,1.1) to [out=20,in=160] (3.4,1.1) node [above right] {$T$};
+		  \draw [->,thick,black] (1.1,.2) -- (3.9,.2) node [above, midway] {$X \sim F(x)$};
+		  \draw[->,very thick, verdecito] (4,1) -- (4,0);
+		  \node[azulcito,below] at (3,-.5) {Hit probability $=1-F(T)$};
+		  \end{tikzpicture}
+		  \end{center}
+		
+		\end{column}
+		
+		\begin{column}{0.5\textwidth}
+
+		\textbf{Occupation probability:} probability that timer \alert{has} expired by $0$ since last arrival.
+
+		\begin{center}
+
+		 \bigskip
+
+		 \begin{tikzpicture}
+		 \draw[white,fill=azulcito!10!white] (3.5,0.9) rectangle (5,0); 
+		 \shade[left color=azulcito!10!white, right color=white] (5,.9) rectangle (6,0);
+		  \draw[->,thick] (0,0) -- (6,0);
+		  \node[below right] at (6,0) {\footnotesize $t$};
+		  
+		  \draw[thick] (4.5,.1) -- (4.5,-.1);
+		  \node[below right] at (4.5,0) {{\footnotesize $0$}};
+		
+		  \draw[->,very thick, rojito] (1,1) -- (1,0);
+		  \draw [->,thick,azulcito] (1.1,1.1) to [out=20,in=160] (3.4,1.1) node [above right] {$T$};		 % \draw[->,very thick, rojito!20!white] (5.75,1) -- (5.75,0);
+		  \draw [<-,thick, black] (1.1,.2) -- (4.5,.2) node [above, midway] {$\hat{X}\sim\hat{F}(x)$};
+		  
+		  \node[azulcito,below] at (3,-.5) {Avg. occupation $= 1-\hat{F}(T)$};
+		\end{tikzpicture}
+		\end{center}
+		
+		\end{column}
+		\end{columns}
+\end{frame}
+
+\begin{frame}{Choosing the optimal timers}
+
+	Requests come from independent sources with intensities $\lambda_i$ and inter-arrival distribution $F_i$:
+
+	\vfill
+
+	\only<1>{
+	\begin{problem}[Optimal pre-fetching policy]
+		Choose timers $T_i\geqslant 0$ such that:
+		\begin{equation*}
+			\max_{T_i\geqslant 0} \sum_i \lambda_i (1-F_i(T_i))
+		\end{equation*}
+		subject to:
+		\begin{equation*}
+			\sum_i (1-\hat{F}_i(T_i)) \leqslant C
+		\end{equation*}
+	\end{problem}
+	}
+	\only<2->{
+		\begin{problem}[Optimal pre-fetching policy]
+			Choose timers $T_i\geqslant 0$ such that:
+			\begin{equation*}
+				\min_{T_i\geqslant 0} \sum_i \lambda_i F_i(T_i)
+			\end{equation*}
+			subject to:
+			\begin{equation*}
+				\sum_i \hat{F}_i(T_i) \geqslant N-C
+			\end{equation*}
+		\end{problem}		
+	}
+	\vfill
+	\pause
+	\alert{Remark:} we can use the same change of variables again!
+\end{frame}
+
+\begin{frame}{Pre-fetching for increasing hazard rates}
+
+	\begin{block}{Optimal pre-fetching policy, IHR, [F',Carrasco, Paganini, last week...].}
+		The optimal timer based pre-fetching policy for IHR is such that:
+	   \begin{equation*}
+		\eta_i (T_i^*) \geqslant \mu^*
+	   \end{equation*}
+	  for every stored content.
+	   \end{block}
+	  \vfill
+	
+	
+	  \alert{Remark:} Again we have to equalize hazard-rates. The policy is a threshold policy.
+
+	  \vfill
+
+	  \alert{Ongoing work:} use this pre-fetching threshold policy to prove that in the fluid limit, the optimal causal policy is a timer-based pre-fetching policy.
+	\end{frame}
+
+	
+\section{Conclusions}
+
+\begin{frame}{Key takeaways...}
+	
+	\begin{myitem}[2em]
+		\item We analyzed two types of caching policies: TTL and replacement.
+		\item We identified the \alert{hazard rate} function as a crucial component of optimal policies.
+		\item Using the point process framework, we can model burstiness and exactly compute asymptotics for TTL policies.
+		\item We provide a large scale equivalence result for the optimal causal policy and the optimal TTL policy, enabling us to compute universal bounds on asymptotic performance!
+	\end{myitem}
+\end{frame}
+
+\begin{frame}{Key takeways...}
+	
+	\begin{myitem}[2em]
+		\item For IHR (more regular) traffic, caching is not a good idea!
+		\item Instead, in order to use the information about arrivals, it is better to \alert{pre-fetch} the content after some time.
+		\item We derived the optimal timer based pre-fetching policy and expect to prove a similar equivalence result with the optimal causal policy!
+	\end{myitem}
+
+\end{frame}
+
+% \begin{frame}{Future work}
+	
+% 	\begin{myitem}[2em]
+% 		\item Analyze other distributions (not just Pareto), using the framework.
+% 		\item Discuss the \alert{increasing hazard rate} case:
+		
+% 		\smallskip
+
+% 		\begin{myitem}[1em]
+% 			\item Caching is a bad idea! If you receive a request, it's less likely to see it again!
+% 			\item The TTL policy is suboptimal
+% 			\item Key idea to explore: \alert{pre-fetching}!
+% 		\end{myitem}
+
+% 		\item Apply some \alert{learning} techniques to estimate the hazard rates and the threshold in an online fashion.
+% 	\end{myitem}
+% \end{frame}
+
+\begin{frame}[plain]
+	\vfill
+	{\Huge \alert{Thank you!}}
+	\vfill
+	Andres Ferragut
+
+	ferragut@ort.edu.uy
+	
+	\alert{http://aferragu.github.io}
+\end{frame}
+
+\end{document}
